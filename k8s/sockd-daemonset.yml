@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sockd-config
+data:
+  sockd.conf: |
+    logoutput: /dev/stdout
+    internal: 0.0.0.0 port = 1080
+    external: eth0
+
+
+    socksmethod: username none
+    user.privileged: root
+    client pass {
+        from: 0.0.0.0/0 to: 0.0.0.0/0
+        log: connect disconnect error
+    }
+
+    socks pass {
+        from: 0.0.0.0/0 to: 0.0.0.0/0
+        command: bind connect udpassociate
+        socksmethod: username
+        log: connect disconnect error
+    }
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: socksbackend
+spec:
+  selector:
+    matchLabels:
+      app: socksbackend
+  template:
+    metadata:
+      labels:
+        app: socksbackend
+    spec:
+      containers:
+      - name: socksbackend
+        image: ghcr.io/charlieeriksen/socksprox:main
+        imagePullPolicy: Always
+        
+        ports:
+        - name: socks5
+          containerPort: 1080
+        volumeMounts:
+        - name: sockd-config-volume
+          mountPath: /etc/sockd.conf
+          subPath: sockd.conf
+        - name: secret-volume
+          mountPath: /config
+      volumes:
+      - name: sockd-config-volume
+        configMap:
+          name: sockd-config
+      - name: secret-volume
+        secret:
+          secretName: sockd-secret

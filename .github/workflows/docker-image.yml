@@ -1,4 +1,4 @@
-name: Build socksprox-informer
+name: Build dante image
 
 on:
   push:
